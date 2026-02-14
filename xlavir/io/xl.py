@@ -112,6 +112,7 @@ def write_xlsx_report(dfs: List[ExcelSheetDataFrame],
         images_added = False
 
         for esdf in dfs:
+            esdf.df = esdf.df.fillna('')  # Fill NaNs with empty strings to avoid issues with xlsxwriter when writing to Excel
             if images_for_sheets and esdf.sheet_name == SheetName.workflow_info.value:
                 add_images(images_for_sheets, book)
                 images_added = True
