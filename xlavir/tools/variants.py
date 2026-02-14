@@ -355,7 +355,7 @@ def simplify_snpsift(df: pd.DataFrame, sample_name: str) -> Optional[pd.DataFram
                 field_names.add(new_series_name)
             dfc = df[c]
             # This handles 'object' or 'string' dtypes across all Python versions and pandas versions
-            if is_string_dtype(dfc):
+            if is_string_dtype(dfc) and isinstance(dfc.values[0], str):
                 new_series = dfc.str.split(',', n=1, expand=True)[0]
             else:
                 new_series = dfc.astype('str')
