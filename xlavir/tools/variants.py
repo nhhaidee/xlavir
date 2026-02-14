@@ -354,12 +354,11 @@ def simplify_snpsift(df: pd.DataFrame, sample_name: str) -> Optional[pd.DataFram
             else:
                 field_names.add(new_series_name)
             dfc = df[c]
-            # This handles 'object' or 'string' dtypes across all Python versions and pandas versions, since the 'string' dtype was only introduced in pandas 1.0 and is not used in older versions where 'object' dtype would be used for string data.
-            # We want to split the string on the comma to get the first value, but if it's not a string dtype then we can just convert it to string and replace 'nan', 'None', and '<NA>' with N
+            # This handles 'object' or 'string' dtypes across all Python versions and pandas versions
             if is_string_dtype(dfc):
                 new_series = dfc.str.split(',', n=1, expand=True)[0]
             else:
-                new_series = dfc.astype('str').replace(['nan', 'None', '<NA>'], None)
+                new_series = dfc.astype('str')
             new_series.name = new_series_name
             series.append(new_series)
         else:
