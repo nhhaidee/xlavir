@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from operator import itemgetter
 from pathlib import Path
 from typing import Dict, Tuple, List, Optional, Iterable, Union
+from pandas.api.types import is_string_dtype
 
 import pandas as pd
 from pydantic import BaseModel
@@ -353,10 +354,12 @@ def simplify_snpsift(df: pd.DataFrame, sample_name: str) -> Optional[pd.DataFram
             else:
                 field_names.add(new_series_name)
             dfc = df[c]
-            if dfc.dtype == 'object' and isinstance(dfc.values[0], str):
+            # This handles 'object' or 'string' dtypes across all Python versions and pandas versions, since the 'string' dtype was only introduced in pandas 1.0 and is not used in older versions where 'object' dtype would be used for string data.
+            # We want to split the string on the comma to get the first value, but if it's not a string dtype then we can just convert it to string and replace 'nan', 'None', and '<NA>' with N
+            if is_string_dtype(dfc):
                 new_series = dfc.str.split(',', n=1, expand=True)[0]
             else:
-                new_series = dfc.astype('str')
+                new_series = dfc.astype('str').replace(['nan', 'None', '<NA>'], None)
             new_series.name = new_series_name
             series.append(new_series)
         else:
@@ -393,12 +396,15 @@ def parse_ivar_vcf(df: pd.DataFrame, sample_name: str = None) -> Optional[pd.Dat
         # misleading for deletions
         # See iVar issue: https://github.com/andersen-lab/ivar/issues/86
         infos = parse_vcf_info(row.INFO)
-        total_dp = infos['DP']
         ks = row.FORMAT.split(':')
         vs = row[-1].split(':')
         record: Dict[str, Union[float, int, str]] = {k: try_parse_number(v) for k, v in zip(ks, vs)}
         ref_dp = record['REF_DP']
         alt_dp = record['ALT_DP']
+        # if there is no DP INFO field then use the DP FORMAT field if it exists, viral recon move DP from INFO to FORMAT in newer versions
+        total_dp = infos.get('DP', record.get('DP', None))
+        if total_dp is None:
+            raise ValueError(f'No DP INFO field or DP FORMAT field found for iVar VCF at position {row.POS} for sample "{sample_name}"')
         # if the sum of the ref and alt dp does not equal the total dp reported by iVar then recalculate the ref dp
         # since it is likely only reporting the ref dp for the first base of a longer deletion. SNPs should be fine.
         sum_ref_alt_dp = ref_dp + alt_dp

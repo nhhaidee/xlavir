@@ -1,6 +1,12 @@
 # Changelog
 
 
+## 1.0.3 (2025-02-16)
+
+* Fix issue for KeyError DP when parsing VCF files with no DP INFO field (viral recon move DP to FORMAT field
+* Fix issue ValueError: cannot convert float NaN to integer when writing Excel report with no VCF for Python 3.11+
+* Fix issue handles object or string dtypes across all Python versions and pandas versions in simplify_snpsift function
+
 ## 1.0.2 (2023-12-06)
 
 * All VCF source tool names are converted to lowercase
