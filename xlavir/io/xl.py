@@ -120,6 +120,14 @@ def write_xlsx_report(dfs: List[ExcelSheetDataFrame],
 
             sheet: Worksheet = book.get_worksheet_by_name(esdf.sheet_name)
 
+            # Force Bold Header for ALL sheets (Fixes Python 3.11+ issue)
+            if esdf.pd_to_excel_kwargs.get('index', True):
+                idx_and_cols = [esdf.df.index.name if esdf.df.index.name else ''] + list(esdf.df.columns)
+            else:
+                idx_and_cols = list(esdf.df.columns)
+            for i, col_name in enumerate(idx_and_cols):
+                sheet.write_string(0, i, str(col_name), header_with_wrap_fmt)
+
             idx_and_cols = [esdf.df.index.name] + list(esdf.df.columns)
 
             if esdf.header_comments:
