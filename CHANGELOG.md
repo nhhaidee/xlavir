@@ -4,9 +4,9 @@
 ## 1.0.3 (2025-02-16)
 
 * Fix issue: for KeyError DP when parsing VCF files with no DP INFO field (viral recon moves DP to FORMAT field)
-* Fix issue: ValueError: cannot convert float NaN to integer when writing Excel report for Python 3.11+
+* Fix issue: ValueError: cannot convert float NaN to integer when writing Excel report with Pandas 3.0
 * Fix issue: handles object or string dtypes across all Python versions and pandas versions in simplify_snpsift function
-* Fix issue: Force bold header for ALL sheets for Python 3.11+
+* Fix issue: Force bold header for ALL sheets with Pandas 3.0
 
 ## 1.0.2 (2023-12-06)
 
