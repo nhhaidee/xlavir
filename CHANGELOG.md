@@ -1,7 +1,7 @@
 # Changelog
 
 
-## 1.0.3 (2025-02-16)
+## 1.0.3 (2025-02-17)
 
 * Fix issue: for KeyError DP when parsing VCF files with no DP INFO field (viral recon moves DP to FORMAT field)
 * Fix issue: ValueError: cannot convert float NaN to integer when writing Excel report with Pandas 3.0
