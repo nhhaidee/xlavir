@@ -120,20 +120,16 @@ def write_xlsx_report(dfs: List[ExcelSheetDataFrame],
 
             sheet: Worksheet = book.get_worksheet_by_name(esdf.sheet_name)
 
-            # Force Bold Header for ALL sheets (Fixes Python 3.11+ issue)
             if esdf.pd_to_excel_kwargs.get('index', True):
-                idx_and_cols = [esdf.df.index.name if esdf.df.index.name else ''] + list(esdf.df.columns)
+                idx_and_cols = [esdf.df.index.name if esdf.df.index.name else ""] + list(esdf.df.columns)
             else:
                 idx_and_cols = list(esdf.df.columns)
+
             for i, col_name in enumerate(idx_and_cols):
-                sheet.write_string(0, i, str(col_name), header_with_wrap_fmt)
-
-            idx_and_cols = [esdf.df.index.name] + list(esdf.df.columns)
-
-            if esdf.header_comments:
-                for i, col_name in enumerate(idx_and_cols):
-                    if col_name in esdf.header_comments:
-                        sheet.write_comment(0, i, esdf.header_comments[col_name])
+                if esdf.sheet_name != SheetName.consensus.value:
+                    sheet.write_string(0, i, str(col_name), header_with_wrap_fmt)  # Force Bold Header for ALL sheets (Fixes Python 3.11+ issue), except consensus sheet.
+                if esdf.header_comments and col_name in esdf.header_comments:
+                    sheet.write_comment(0, i, esdf.header_comments[col_name])
 
             if esdf.autofit:
                 for i, (width, col_name) in enumerate(zip(get_col_widths(esdf.df,
