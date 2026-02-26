@@ -185,7 +185,11 @@ VCF_GLOB_PATTERNS = [
 ]
 
 VCF_SAMPLE_NAME_CLEANUP = [
-    re.compile(r'(\.pass)?\.vcf(\.gz)?$'),
+    # 1. Always strip the file extension first
+    re.compile(r'\.vcf(\.gz)?$'),
+    # 2. Strip individual tags (order no longer matters!)
+    re.compile(r'\.unique'),
+    re.compile(r'\.pass'),
     re.compile(r'\.AF0\.\d+(\.filt)?'),
     re.compile(r'\.0\.\d+AF(\.filt)?'),
     re.compile(r'\.medaka'),
@@ -585,42 +589,69 @@ def parse_vcf_info(s: str) -> dict:
 
 
 def parse_clair3_vcf(
-        df: pd.DataFrame,
-        sample_name: str,
-        qc_reqs: QualityRequirements
+    df: pd.DataFrame,
+    sample_name: str,
+    qc_reqs: QualityRequirements
 ) -> Optional[pd.DataFrame]:
     if df.empty:
         return None
+    # Identify the sample column (usually the last one)
     if not sample_name:
-        sample_name = df.columns[-1] if df.columns[-1] != 'SAMPLE' else None
-        if sample_name is None:
-            raise ValueError(f'Sample name is not defined for VCF: shape={df.shape}; columns={df.columns}')
+        sample_name = df.columns[-1]
     pos_info_val = {}
-    for row in df.itertuples():
-        infos = parse_vcf_info(row.INFO)
-        # no DP INFO? skip this file
-        if 'DP' not in infos:
-            return None
-        depth = infos['DP']
+    for row in df.itertuples(index=False):
+        # row[8] is usually 'FORMAT', row[9] is usually the 'SAMPLE' values
+        # But to be safe, let's use the actual column positions
+        format_string = row[df.columns.get_loc('FORMAT')]
+        sample_string = row[-1]
+        format_keys = format_string.split(':')
+        sample_values = str(sample_string).split(':')
+        # Create the mapping dictionary
+        sample_data = dict(zip(format_keys, sample_values))
+        # 2. Extract DP and AF from the Sample Data
+        if 'DP' not in sample_data or 'AF' not in sample_data:
+            continue
+        try:
+            # Handle cases where DP might be missing or '.'
+            depth_val = sample_data['DP']
+            af_val = sample_data['AF']
+            if depth_val == '.' or af_val == '.':
+                continue
+            depth = int(depth_val)
+            allele_fraction = float(af_val)
+        except (ValueError, TypeError):
+            continue
+        # 3. Quality Gate: Low Coverage
         if depth < qc_reqs.low_coverage_threshold:
             continue
-        allele_fraction = infos['AF']
+        # 4. Calculate Alt and Ref depths
         alt_dp = int(depth * allele_fraction)
         ref_dp = depth - alt_dp
-        infos['ALT_DP'] = alt_dp
-        infos['REF_DP'] = ref_dp
-        if infos['REF_DP'] + infos['ALT_DP'] < qc_reqs.low_coverage_threshold:
-            continue
-        pos_info_val[row.POS] = infos
-    if pos_info_val == {}:
+        # 5. Store processed data
+        variant_metrics = {
+            'DP': depth,
+            'AF': allele_fraction,
+            'ALT_DP': alt_dp,
+            'REF_DP': ref_dp,
+            'QUAL': row.QUAL,
+            'FILTER': row.FILTER
+        }
+        # Add any extra INFO tags if needed
+        infos = parse_vcf_info(row.INFO)
+        variant_metrics.update(infos)
+        pos_info_val[row.POS] = variant_metrics
+
+    if not pos_info_val:
         return None
+    # Flatten and Merge
     df_clair3_info = pd.DataFrame(pos_info_val).transpose()
     df_clair3_info.index.name = 'POS'
     df_clair3_info.reset_index(inplace=True)
+
     df_merge = pd.merge(df, df_clair3_info, on='POS')
     df_merge['sample'] = sample_name
-    df_merge = df_merge[df_merge.DP > 0]
     df_merge['ALT_FREQ'] = df_merge.AF
+    # Final column filtering based on your predefined list
     cols_to_keep = list({col for col, _, _ in variants_cols} & set(df_merge.columns))
     return df_merge.loc[:, cols_to_keep]
 
