@@ -662,7 +662,6 @@ def get_info(basedir: Path, qc_reqs: QualityRequirements) -> Dict[str, pd.DataFr
                                            sample_name_cleanup=VCF_SAMPLE_NAME_CLEANUP,
                                            single_entry_selector_func=vcf_selector)
     sample_dfvcf = {}
-    print(f'Found VCF files for {len(sample_vcf)} samples in "{sample_vcf}"')
     for sample, vcf_path in sample_vcf.items():
         variant_caller, df_vcf = read_vcf(vcf_path)
         if variant_caller.startswith(VariantCaller.iVar):
