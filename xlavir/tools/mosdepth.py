@@ -18,7 +18,7 @@ SAMPLE_NAME_CLEANUP = [
     '.ivar_trim',
     '.sorted',
     '.sort',
-    '.bam',
+    '.mapped',
 ]
 
 GLOB_PATTERNS = [
